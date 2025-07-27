@@ -9,8 +9,11 @@ const int STATE_exit = 4;
 const int STATE_menu_order = 5;
 const int STATE_error = 6;
 const int STATE_menu_receipt = 7;
+const int STATE_menu_order_add = 8;
+const int STATE_menu_order_remove = 9;
+const int STATE_menu_order_chquant = 10;
 
-char displays[6][3000] = {
+char displays[10][3000] = {
     "\n| DOKBOK's BOKGER |\n"
     "1)  Login\n"
     "2)  About\n"
@@ -38,14 +41,28 @@ char displays[6][3000] = {
     "│ 015 20 7x2' unstable aluminum alloy nails  799 ₱  │  016 Intel(R) Core(TM) Ultra 5 125H (8+10)                   1 ₱ │\n"
     "│ 017 Turtle Burger                            9 ₱  │  018 Water Burger                                            9 ₱ │\n"
     "│ 019 Cynical Cyanide Cider                  499 ₱  │  020 ???                                                 99999 ₱ │\n"
-    "├──────────────────────────────────────────────M──E─┴─N──U─────────────────────────────────────────────────────────────┘\n",
+    "├───────────────────────────────────────< DOKBOK's >┴< BOKGER >────────────────────────────────────────────────────────┘\n",
 
     "│\n"
-    "├─OPTIONS─>\n"
-    "1)  Back to menu\n"
-    "2)  Take Order\n"
+    "├─MENU\n"
+    "1)  Edit Order\n"
+    "2)  Check Out\n"
     "3)  Log Out\n"
-    "4)  View Receipt\n"
+    "... Exit\n"
+    "Your Option: ",
+
+    "│\n"
+    "├─ORDER\n"
+    "1)  Add Order\n"
+    "2)  Remove Order\n"
+    "3)  Change Quantity\n"
+    "... Back to Menu\n"
+    "Your Option: ",
+
+    "│\n"
+    "├─CHECKOUT\n"
+    "1)  Pay\n"
+    "2)  Back to Menu (too expensive?)\n"
     "... Exit\n"
     "Your Option: ",
 };
@@ -170,22 +187,22 @@ int main() {
   int failed_logins = 0;
 
   // +1 for the annoying null terminator 
-  char option[1 + 1];
-  char usname[20 + 1];
-  char uspass[20 + 1];
+  char usr_optn[1 + 1];
+  char usr_name[20 + 1];
+  char usr_pass[20 + 1];
 
   while (_s != STATE_exit) {
     switch (_s) {
     case STATE_entry:
       display_entry();
-      if (scanf("%1s", option) != 1) {
+      if (scanf("%1s", usr_optn) != 1) {
         _s = STATE_error;
         break;
       }
       buffer_clear();
-      if (matches("1", option)) {
+      if (matches("1", usr_optn)) {
         _s = STATE_login;
-      } else if (matches("2", option)) {
+      } else if (matches("2", usr_optn)) {
         _s = STATE_about;
       } else {
         _s = STATE_exit;
@@ -202,19 +219,18 @@ int main() {
 
     case STATE_login: {
       printf("Username: ");
-      if (scanf("%20s", usname) != 1) {
+      if (scanf("%20s", usr_name) != 1) {
         _s = STATE_entry;
         break;
       }
       buffer_clear();
       printf("Password: ");
-      if (scanf("%20s", uspass) != 1) {
+      if (scanf("%20s", usr_pass) != 1) {
         _s = STATE_entry;
         break;
       }
       buffer_clear();
-
-      if (isValid_login(usname, uspass)) {
+      if (isValid_login(usr_name, usr_pass)) {
         printf("\nLogin Successful!\n");
         _s = STATE_menu;
       } else {
@@ -235,26 +251,42 @@ int main() {
     case STATE_menu:
       display_menu();
       display_menuOptions();
-      if (scanf("%1s", option) != 1) {
+      if (scanf("%1s", usr_optn) != 1) {
         _s = STATE_error;
         break;
       }
       buffer_clear();
-      if (matches("1", option)) {
-        _s = STATE_menu;
-      } else if (matches("2", option)) {
+      if (matches("1", usr_optn)) {
         _s = STATE_menu_order;
-      } else if (matches("3", option)) {
-        _s = STATE_entry;
-      } else if (matches("4", option)) {
+      } else if (matches("2", usr_optn)) {
         _s = STATE_menu_receipt;
+      } else if (matches("3", usr_optn)) {
+        _s = STATE_entry;
       } else {
         _s = STATE_exit;
       }
      break;
 
-     
+
     case STATE_menu_order: {
+      if (scanf("%1s", usr_optn) != 1) {
+        _s = STATE_error;
+        break;
+      }
+      buffer_clear();
+      if (matches("1", usr_optn)) {
+        _s = STATE_menu_order_add;
+      } else if (matches("2", usr_optn)) {
+        _s = STATE_menu_order_remove;
+      } else if (matches("3", usr_optn)) {
+        _s = STATE_menu_order_chquant;
+      } else {
+        _s = STATE_menu;
+      }
+    }
+
+    
+    case STATE_menu_order_add: {
       // +1 for null terminator
       char order_num[3 + 1];
       int quant = 0;
@@ -282,15 +314,15 @@ int main() {
       printf("ADDED | %d of %s\n", quant, menu_names[get_itemIndex(order_num)]);
       buffer_clear();
       printf("ORDER | another item? (y/n): ");
-      if (scanf("%1s", option) != 1) {
+      if (scanf("%1s", usr_optn) != 1) {
         _s = STATE_error;
         break;
       }
       buffer_clear();
-      if (matches(option, "y")) {
-        _s = STATE_menu_order;
+      if (matches(usr_optn, "y")) {
+        _s = STATE_menu_order_add;
       } else {
-        _s = STATE_menu;
+        _s = STATE_menu_order;
       }
       // ...
       } break;
@@ -301,12 +333,23 @@ int main() {
         printf("\nReceipt? Order something first! >:(\n");
       } else {
         printf("\nItems (%d):\n", user_orderCount);
+        int acc_price = 0;
         for (int i = 0; i < user_orderCount; i++) {
           int item_i = get_itemIndex(user_orderNums[i]);
-          printf("Quantity: %d\n", user_orderQuants[i]);
-          printf("%s | ", menu_names[item_i]);
-          printf("%d₱ | \n", menu_prices[item_i]);
+          char name[80 + 1]; strcpy(name, menu_names[item_i]);
+          int quant = user_orderQuants[i];
+          int price = menu_prices[item_i];
+          int t_price = price * quant; 
+          printf("Quantity: %d | ", quant);
+          printf("%s ", name);
+          printf("(%d₱) | ", price);
+          printf("Total: %d₱\n", t_price);
+          acc_price += t_price;
         }
+        printf("\nAccumulated Total: %d₱\n", acc_price);
+      }
+      if (matches("1", usr_optn)) {
+
       }
       _s = STATE_menu;
       prompt_wait();
