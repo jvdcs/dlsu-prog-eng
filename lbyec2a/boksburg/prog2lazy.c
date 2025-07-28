@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+// states for the main loop
 const int STATE_entry = 0;
 const int STATE_about = 1;
 const int STATE_login = 2;
@@ -12,75 +13,20 @@ const int STATE_menu_receipt = 7;
 const int STATE_menu_checkout = 8;
 const int STATE_menu_checkout_pay = 9;
 const int STATE_menu_checkout_discount = 10;
+const int STATE_menu_checkout_discount_vipverify = 11;
+int _s_ = STATE_entry;
 
-char displays[10][3000] = {
-    "\n| DOKBOK's BOKGER |\n"
-    "1) Login\n"
-    "2) About\n"
-    "3) Exit\n"
-    "Your Option: ",
+// makes my life easier
+#define MAX_USERS 3
+#define MAX_MENU_ITEMS 20
+#define MAX_MENU_ITEMNAME_LENGTH 80
+#define MAX_USERNAME_LENGTH 20
 
-    "\n| ABOUT DOKBOK's |\n"
-    "This restaurant is the most authentic\n"
-    "Not only do we sell the best burgers!\n"
-    "But we also sell hardware, which you can eat\n"
-    "...and many more surprises!\n"
-    "ENJOY!\n",
-
-    "\ny o u   w i l l   r e g r e t   t h i s ...\n",
-
-    "\n"
-    "┌─NUM─NAME───────────────────────────────────PRICE──┬──NUM─NAME───────────"
-    "───────────────────────────────────────PRICE─┐\n"
-    "│ 000 Quadruple-Patty Bokger Ultra            99 ₱  │  001 Hippopotamus   "
-    "                                      1999 ₱ │\n"
-    "│ 002 50KG Edible Copper Wire Set             29 ₱  │  003 Horse Burger   "
-    "                                       199 ₱ │\n"
-    "│ 004 Eagle Burger                          1001 ₱  │  005 Bread Burger   "
-    "                                      1002 ₱ │\n"
-    "│ 006 Bread Sandwich                           9 ₱  │  007 Bread and Rice "
-    "                                        10 ₱ │\n"
-    "│ 008 Honey Glazed Chihuahua                2999 ₱  │  009 3kg Industrial "
-    "Grad Rootbeer                            1 ₱ │\n"
-    "│ 010 A drum of Industrial Grade Lubricant    29 ₱  │  011 Bok's Hot'n "
-    "Spicy Ice Cubes                           499 ₱ │\n"
-    "│ 012 Mahogany Tree Bark Salad                29 ₱  │  013 Saging'ng "
-    "panggising, sinangag at ginisang sinigang  5999 ₱ │\n"
-    "│ 014 20 7x2' unstable aluminum alloy nails  799 ₱  │  015 Intel(R) "
-    "Core(TM) Ultra 5 125H (8+10)                   1 ₱ │\n"
-    "│ 016 Turtle Burger                            9 ₱  │  017 Water Burger   "
-    "                                         9 ₱ │\n"
-    "│ 018 Cynical Cyanide Cider                  499 ₱  │  019 ???            "
-    "                                     99999 ₱ │\n"
-    "├───────────────────────────────────────< DOKBOK's >┴< BOKGER "
-    ">────────────────────────────────────────────────────────┘\n",
-
-    "│\n"
-    "├─MENU\n"
-    "1) Edit Order\n"
-    "2) Receipt & Check Out\n"
-    "3) Log Out\n"
-    "Your Option: ",
-
-    "\n"
-    "┌─CHECKOUT\n"
-    "1) Pay\n"
-    "2) Discounts\n"
-    "3) Back to Menu (too expensive?)\n"
-    "Your Option: ",
-
-    "\n"
-    "┌─DISCOUNTS-(i am a ... check all that apply):\n"
-    "1) Person with disability"
-    "2) Senior Citizen"
-    "3) DOK's VIP"
-    "4) Back to Checkout (im normal)\n"
-    "Your Option: ",
-};
-int menu_nums[20] = {
+// global vars
+int menu_nums[MAX_MENU_ITEMS] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 };
-char menu_names[20][80 + 1] = {
+char menu_names[MAX_MENU_ITEMS][MAX_MENU_ITEMNAME_LENGTH + 1] = {
     "Quadruple-Patty Bokger Ultra",
     "Hippopotamus",
     "50KG Edible Copper Wire Set",
@@ -102,52 +48,75 @@ char menu_names[20][80 + 1] = {
     "Cynical Cyanide Cider",
     "???",
 };
-int menu_prices[20] = {
+int menu_prices[MAX_MENU_ITEMS] = {
     99, 1999, 29, 199,  1001, 1002, 9, 10, 2999, 1,
     29, 499,  29, 5999, 799,  1,    9, 9,  499,  99999,
 };
 
-// + 1 for the annoying null terminator
-char user_names[3][20 + 1] = {
+// inventory per user,
+// i can login between them
+// and their states are saved
+// as long as i dont exit progam
+char user_names[MAX_USERS][MAX_USERNAME_LENGTH + 1] = {
+    //+1 for null terminator
     "tinus_lorvalds",
     "derry_tavis",
     "dok",
 };
-char user_pass[3][20 + 1] = {
+char user_pass[MAX_USERS][MAX_USERNAME_LENGTH + 1] = {
     "WindowsIsUseless",
     "GodsChosenProgrammer",
     "bok",
 };
-int user_bals[3] = {210945, 68, 99999999};
-int user_menus[3][20];
-int user_index;
-float user_discounts = 0;
+float user_bals[MAX_USERS] = {310771.0f, 68.9999f, 4201889.0f};
+int user_orders[MAX_USERS][MAX_MENU_ITEMS];
+int user_orderCount[MAX_USERS];
+int user_isPWD[MAX_USERS];
+int user_isSRC[MAX_USERS];
+int user_isVIP[MAX_USERS];
+float cur_price2pay;
+// user index for tracking inventory
+int uin;
 
-void init_user_index(char name[]) {
-  for (int i = 0; i < 3; i++) {
-    if (strcmp(user_names[i], name) == 0) {
-      user_index = i;
-      return;
-    }
-  }
-}
-
-// this prevents a lot of bugs
+// this prevents a lot of bugs with scanf
 void buffer_clear() {
   int c;
   while ((c = getchar()) != '\n' && c != -1)
     ;
 }
-
 void prompt_wait() {
   printf("\n(press enter to continue)");
   buffer_clear();
 }
-
 int matches(char c1[], char c2[]) { return strcmp(c1, c2) == 0; }
-int isValid_login(char n[], char p[]) {
+void init_user_vars(char name[]) {
+  for (int i = 0; i < MAX_USERS; i++) {
+    if (matches(user_names[i], name)) {
+      uin = i;
+      return;
+    }
+  }
+}
+void clear_user_orders() {
+  for (int i = 0; i < MAX_MENU_ITEMS; i++) {
+    user_orders[uin][i] = 0;
+  }
+}
+void error2menu() {
+  buffer_clear();
+  _s_ = STATE_menu;
+  printf("\nBAD input! returning to MENU...\n");
+  prompt_wait();
+}
+void error2entry() {
+  buffer_clear();
+  _s_ = STATE_entry;
+  printf("\nBAD input! returning to ENTRY...\n");
+  prompt_wait();
+}
+int is_valid_login(char n[], char p[]) {
   int is = 0;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < MAX_USERS; i++) {
     int name_match = matches(n, user_names[i]);
     int pass_match = matches(p, user_pass[i]);
     if (name_match && pass_match) {
@@ -157,236 +126,388 @@ int isValid_login(char n[], char p[]) {
   }
   return is;
 }
+void display_entryOptn() {
+  printf("\n  W E L C O M E   T O\n"
+         "\n-={ DOKBOK's BOKGER }=-\n\n"
+         "1) Login\n"
+         "2) About\n"
+         "3) Exit\n"
+         "Option Number: ");
+}
+void display_aboutMsg() {
+  printf("\n| ABOUT DOKBOK's |\n"
+         "This restaurant is the most authentic\n"
+         "Not only do we sell the best burgers!\n"
+         "But we also sell hardware, which you can eat!\n"
+         "And many more *surprises*...\n"
+         "ENJOY!\n");
+}
+void display_exitMsg() { printf("\nSee you next time...\n"); }
+void display_menuUI() {
+  printf("┌─NUM─NAME─────────────────────────────PRICE─┬─NUM─NAME─────────────"
+         "──────────────────────────────────────PRICE─┐\n");
+  for (int i = 0; i < 10; i++) {
+    printf("│ %03d %-30s %5d ₱ │", menu_nums[i], menu_names[i], menu_prices[i]);
+    printf(" %03d %-52s %5d ₱ │\n", menu_nums[i + 10], menu_names[i + 10],
+           menu_prices[i + 10]);
+  }
+  printf("├────────────────────────────────[ DOKBOK's ]┴[ BOKGER "
+         "]────────────────────────────────────────────────────────┘\n");
+}
+void display_menuOptn() {
+  printf("├─[BALANCE] %f ₱\n", user_bals[uin]);
+  printf("├─[MENU]\n"
+         "1) Edit Order\n"
+         "2) Receipt & Check Out\n"
+         "3) Log Out\n"
+         "Option Number: ");
+}
+void display_checkoutOptn() {
+  printf("├─[BALANCE] %f ₱\n", user_bals[uin]);
+  printf("├─[CHECKOUT]\n"
+         "1) Pay\n"
+         "2) Discounts\n"
+         "3) Back to Menu (too expensive?)\n"
+         "Option Number: ");
+}
+void display_paymentOptn() {
+  printf("├─[PAID]\n"
+         "1) Order again\n"
+         "2) Bye bye\n"
+         "Option Number: ");
+}
+void display_receipt() {
+  printf("\nOrders (%d):\n", user_orderCount[uin]);
+  int acc_items = 0;
+  int acc_price = 0;
+  for (int i = 0; i < MAX_MENU_ITEMS; i++) {
+    int quant = user_orders[uin][i];
+    if (quant == 0) {
+      continue;
+    }
+    char name[MAX_MENU_ITEMNAME_LENGTH + 1];
+    strcpy(name, menu_names[i]);
+    int price = menu_prices[i];
+    int tprice = price * quant;
+    printf("  - %d x ", quant);
+    printf("%s ", name);
+    printf("(%d ₱) | ", price);
+    printf("Total: %d ₱\n", tprice);
+    acc_price += tprice;
+    acc_items += quant;
+  }
+  float discount = 0.0f;
+  if (user_isPWD[uin]) {
+    discount += 0.08f;
+  }
+  if (user_isSRC[uin]) {
+    discount += 0.10f;
+  }
+  if (user_isVIP[uin] > 0) {
+    discount += 0.80f;
+  } else if (user_isVIP[uin] < 0) {
+    discount -= 0.80f;
+  }
+  printf("\nAccumulated:\n");
+  printf("  - Item Count: %d\n", acc_items);
+  printf("  - Cost: %d ₱\n", acc_price);
+  printf("  - Discount: %2f ₱\n", (acc_price * discount));
+  cur_price2pay = acc_price - (acc_price * discount);
+  printf("\n┌─[FINAL COST] %2f ₱\n", cur_price2pay);
+}
+void display_discounts() {
+  printf("\n┌─DISCOUNTS-[I am a... (check all that apply)]\n1) ");
+  if (user_isPWD[uin]) {
+    printf("✓ Person with disability +8%%");
+  } else {
+    printf("Person with disability");
+  }
+  printf(" \n2) ");
+  if (user_isSRC[uin]) {
+    printf("✓ Senior Citizen +10%%");
+  } else {
+    printf("Senior Citizen");
+  }
+  printf(" \n3) ");
+  if (user_isVIP[uin] > 0) {
+    printf("✓ DOK's VIP +80%%");
+  } else if (user_isVIP[uin] < 0) {
+    printf("! DOK's VIP -80%%");
+  } else {
+    printf("DOK's VIP");
+  }
+  printf(" \n4) "
+         "Back to checkout\n"
+         "Toggle Option: ");
+}
+void screen_clear() {
+  for (int i = 0; i < 100; i++) {
+    printf("\n");
+  }
+}
 
-void display_entry() { printf("%s", displays[0]); }
-void display_about() { printf("%s", displays[1]); }
-void display_exit() { printf("%s", displays[2]); }
-void display_menu() { printf("%s", displays[3]); }
-void display_menuOptn() { printf("%s", displays[4]); }
-void display_checkoutOptn() { printf("%s", displays[5]); }
 int main() {
-  int _s = STATE_entry;
   int failed_logins = 0;
-
   int usr_optn;
-  // +1 for the annoying null terminator
-  char usr_name[20 + 1];
-  char usr_pass[20 + 1];
-
-  while (_s != STATE_exit) {
-    switch (_s) {
+  char usr_name[MAX_USERNAME_LENGTH + 1]; //+1 for null terminator
+  char usr_pass[MAX_USERNAME_LENGTH + 1];
+  while (_s_ != STATE_exit) {
+    switch (_s_) {
     case STATE_entry:
-      display_entry();
+      screen_clear();
+      display_entryOptn();
       if (scanf("%d", &usr_optn) != 1) {
-        _s = STATE_error;
+        error2entry();
         break;
       }
       buffer_clear();
       switch (usr_optn) {
       case 1:
-        _s = STATE_login;
+        _s_ = STATE_login;
         break;
       case 2:
-        _s = STATE_about;
+        _s_ = STATE_about;
         break;
       default:
-        _s = STATE_exit;
+        _s_ = STATE_exit;
         break;
       }
       break;
 
     case STATE_about:
-      display_about();
+      screen_clear();
+      display_aboutMsg();
       prompt_wait();
-      _s = STATE_entry;
+      _s_ = STATE_entry;
       break;
 
     case STATE_login: {
       printf("Username: ");
       if (scanf("%20s", usr_name) != 1) {
-        _s = STATE_entry;
+        error2entry();
         break;
       }
       buffer_clear();
       printf("Password: ");
       if (scanf("%20s", usr_pass) != 1) {
-        _s = STATE_entry;
+        error2entry();
         break;
       }
       buffer_clear();
-      if (isValid_login(usr_name, usr_pass)) {
-        printf("\nLogin Successful!\n");
-        init_user_index(usr_name);
-        _s = STATE_menu;
+      if (is_valid_login(usr_name, usr_pass)) {
+        init_user_vars(usr_name);
+        _s_ = STATE_menu;
       } else {
         printf(
-            "\n| INVALID LOGIN, attempts remaining: %d |\n\ns t a y   o u t\n",
+            "\n| INVALID LOGIN, attempts remaining: %d |\ns t a y   o u t\n",
             2 - failed_logins);
         failed_logins++;
-        _s = STATE_entry;
+        prompt_wait();
+        _s_ = STATE_entry;
       }
       if (failed_logins > 2) {
-        _s = STATE_exit;
+        _s_ = STATE_exit;
       }
     } break;
 
     case STATE_menu:
-      display_menu();
+      screen_clear();
+      display_menuUI();
       display_menuOptn();
       if (scanf("%d", &usr_optn) != 1) {
-        _s = STATE_error;
+        error2menu();
         break;
       }
       buffer_clear();
       switch (usr_optn) {
       case 1:
-        _s = STATE_menu_order;
+        printf("└─────┐\n");
+        _s_ = STATE_menu_order;
         break;
       case 2:
-        _s = STATE_menu_receipt;
+        _s_ = STATE_menu_receipt;
         break;
       default:
-        _s = STATE_entry;
+        _s_ = STATE_entry;
         break;
       }
       break;
 
     case STATE_menu_order: {
+      printf("ENTER │ item number (000-019): ");
       int order_num;
-      printf("ENTER | item number (000-019): ");
       if (scanf("%d", &order_num) != 1) {
-        _s = STATE_error;
+        error2menu();
         break;
       }
       buffer_clear();
-      if (order_num < 0 || order_num > 19) {
-        printf("YIKES | That ain't in the menu buddy.\n");
+      if (order_num < 0 || order_num > MAX_MENU_ITEMS - 1) {
+        printf("YIKES │ That ain't in the menu buddy.\n");
         break;
       }
-      int cur_quant = user_menus[user_index][order_num];
-      printf("ENTER | change quantity (current: %d): ", cur_quant);
+      int cur_quant = user_orders[uin][order_num];
+      printf("ENTER │ change quantity of '%s' (current: %d): ",
+             menu_names[order_num], cur_quant);
       int new_quant;
       if (scanf("%d", &new_quant) != 1) {
-        _s = STATE_error;
+        error2menu();
         break;
       }
       buffer_clear();
       if (new_quant < 1) {
-        printf("REMOV | Removing item %s\n", menu_names[order_num]);
-        user_menus[order_num][user_index] = 0;
+        if (cur_quant < 1) {
+          printf("YIKES │ Already at 0 buddy.\n");
+        } else {
+          printf("REMOV │ Removing order %s\n", menu_names[order_num]);
+        }
+        user_orders[uin][order_num] = 0;
       } else {
-        printf("ADDED | %d of %s\n", new_quant, menu_names[order_num]);
-        user_menus[order_num][user_index] = new_quant;
+        printf("ADDED │ Order of %d of %s\n", new_quant, menu_names[order_num]);
+        user_orders[uin][order_num] = new_quant;
       }
-      printf("ORDER | edit another item? (yes=1/no=0): ");
+      printf("ORDER │ edit another item? (yes=1/no=0): ");
       if (scanf("%d", &usr_optn) != 1) {
-        _s = STATE_error;
+        error2menu();
         break;
       }
       buffer_clear();
       if (usr_optn == 1) {
-        _s = STATE_menu_order;
+        _s_ = STATE_menu_order;
       } else {
-        _s = STATE_menu;
+        _s_ = STATE_menu;
       }
     } break;
 
     case STATE_menu_receipt: {
-      int count_order = 0;
-      for (int i = 0; i < 20; i++) {
-        if (user_menus[i] > 0) {
-          count_order++;
+      screen_clear();
+      user_orderCount[uin] = 0;
+      for (int i = 0; i < MAX_MENU_ITEMS; i++) {
+        if (user_orders[uin][i] > 0) {
+          user_orderCount[uin]++;
         }
       }
-      if (count_order == 0) {
+      if (user_orderCount[uin] == 0) {
         printf("\nCheckout? Order something first! >:(\n");
-        _s = STATE_menu;
         prompt_wait();
+        _s_ = STATE_menu;
       } else {
-        printf("\nOrders (%d):\n", count_order);
-        int acc_items = 0;
-        int acc_price = 0;
-        for (int i = 0; i < 20; i++) {
-          int quant = user_menus[user_index][i];
-          if (quant == 0) {
-            continue;
-          }
-          char name[80 + 1];
-          strcpy(name, menu_names[i]);
-          int price = menu_prices[i];
-          int tprice = price * quant;
-          printf("  - %d x ", quant);
-          printf("%s ", name);
-          printf("(%d ₱) | ", price);
-          printf("Total: %d ₱\n", tprice);
-          acc_price += tprice;
-          acc_items += quant;
-        }
-        printf("\nAccumulated:\n");
-        printf("  - Item Count: %d\n", acc_items);
-        printf("  - Cost: %d ₱\n", acc_price);
-        _s = STATE_menu_checkout;
+        _s_ = STATE_menu_checkout;
       }
     } break;
 
     case STATE_menu_checkout: {
+      screen_clear();
+      display_receipt();
       display_checkoutOptn();
       if (scanf("%d", &usr_optn) != 1) {
-        _s = STATE_error;
+        error2menu();
         break;
       }
       buffer_clear();
       switch (usr_optn) {
       case 1:
-        _s = STATE_menu_checkout_pay;
+        _s_ = STATE_menu_checkout_pay;
         break;
       case 2:
-        _s = STATE_menu_checkout_discount;
+        _s_ = STATE_menu_checkout_discount;
         break;
       default:
-        _s = STATE_menu;
+        _s_ = STATE_menu;
         break;
       }
     } break;
 
     case STATE_menu_checkout_pay: {
-
+      screen_clear();
+      if (user_bals[uin] < cur_price2pay) {
+        printf("\nYou're broke :( Change your order!\n");
+        prompt_wait();
+        _s_ = STATE_menu_checkout;
+        break;
+      } else {
+        float old_bal = user_bals[uin];
+        user_bals[uin] -= cur_price2pay;
+        printf("\nSuccesfully Paid! Thank you for buying at DOKBOK's BOKGER\n");
+        printf("\n┌─[OLD BALANCE] %f ₱\n", old_bal);
+        printf("├─[NEW BALANCE] %f ₱\n", user_bals[uin]);
+        display_paymentOptn();
+        if (scanf("%d", &usr_optn) != 1) {
+          error2menu();
+          break;
+        }
+        buffer_clear();
+        switch (usr_optn) {
+        case 1:
+          clear_user_orders();
+          _s_ = STATE_menu;
+          break;
+        default:
+          _s_ = STATE_exit;
+          break;
+        }
+      }
     } break;
 
     case STATE_menu_checkout_discount: {
+      screen_clear();
+      display_discounts();
       if (scanf("%d", &usr_optn) != 1) {
-        _s = STATE_error;
+        error2menu();
         break;
       }
       buffer_clear();
       switch (usr_optn) {
       case 1:
-        user_discounts += 0.10f;
+        user_isPWD[uin] = !user_isPWD[uin];
         break;
       case 2:
-        user_discounts = 0.15f;
+        user_isSRC[uin] = !user_isSRC[uin];
         break;
       case 3:
-        user_discounts = 0.98f;
+        if (user_isVIP[uin] > 0) {
+          user_isVIP[uin] = !user_isVIP[uin];
+        } else {
+          _s_ = STATE_menu_checkout_discount_vipverify;
+        }
         break;
       default:
-        _s = STATE_menu_checkout;
+        _s_ = STATE_menu_checkout;
         break;
       }
     } break;
 
+    case STATE_menu_checkout_discount_vipverify: {
+      printf("\nProve yourself.\n");
+      printf("What is dok's favorite bok?: ");
+      char sec[4];
+      if (scanf("%3s", sec) != 1) {
+        error2menu();
+        break;
+      }
+      buffer_clear();
+      if (matches(sec, "bok")) {
+        printf("\nWelcome home, King.\n");
+        user_isVIP[uin] = 1;
+      } else {
+        printf("\n⚠ Liar and fraud detected, added negative discount >:(\n");
+        user_isVIP[uin] = -1;
+      }
+      prompt_wait();
+      _s_ = STATE_menu_checkout_discount;
+    } break;
+
     case STATE_error:
       printf("\n⚠ Uh oh! You made an error ⚠\n");
-      _s = STATE_exit;
+      _s_ = STATE_exit;
       break;
 
     default:
       printf("\nUnknown program state, Exiting.\n");
-      _s = STATE_exit;
+      _s_ = STATE_exit;
       break;
     }
   }
 
-  display_exit();
+  display_exitMsg();
   return 0;
 }
