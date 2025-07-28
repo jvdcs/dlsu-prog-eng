@@ -436,9 +436,9 @@ int main() {
           break;
         }
         buffer_clear();
+        clear_user_orders();
         switch (usr_optn) {
         case 1:
-          clear_user_orders();
           _s_ = STATE_menu;
           break;
         default:
