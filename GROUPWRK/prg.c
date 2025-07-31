@@ -31,12 +31,14 @@ int currentUserNumRooms = 0;
 char REGISTERED_USERNAMES[MAX_USERS][MAX_NAME_LENGTH] = {
     "GUEST",
     "ADMIN",
-    "k",
+    // "CHECKIN",
+    "k", // < TEMPRARY for convenience
 };
 char REGISTERED_PASSWORDS[MAX_USERS][MAX_NAME_LENGTH] = {
     "GUEST",
     "ADMIN",
-    "k",
+    // "PILLOW",
+    "k", // < TEMPRARY for convenience
 };
 
 //NOTE: Room values may not be realistic. For academic purposes only (and comic relief)
