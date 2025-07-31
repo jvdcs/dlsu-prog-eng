@@ -6,12 +6,12 @@
 #define MAX_FAILED_LOGINS 2
 #define MAX_ITEM_COUNT 20
 
-const int STATE_ENTRY = 0;
-const int STATE_LOGIN = 1;
-const int STATE_EXIT = 2;
-const int STATE_ERROR = 3;
-const int STATE_ABOUT = 4;
-const int STATE_ROOMSELECTION = 5;
+#define STATE_ENTRY  0
+#define STATE_LOGIN  1
+#define STATE_EXIT  2
+#define STATE_ERROR  3
+#define STATE_ABOUT  4
+#define STATE_ROOMSELECTION  5
 
 int currentState = 0;
 int currentFailedLogins = 0;
@@ -70,10 +70,10 @@ char AMENITIES[MAX_ITEM_COUNT][MAX_NAME_LENGTH] = {"WiFi, TV",
 // === DISPLAY FUNCTIONS ===
 void display_entry() {
   printf("Welcome!\n"
-         "       ┌─────────────┐\n"
-         "       │ Hotel  Room │\n"
-         "       │   Booking   │\n"
-         "       └─────────────┘\n"
+         "       .-------------.\n"
+         "       | Hotel  Room |\n"
+         "       |   Booking   |\n"
+         "       .-------------.\n"
          "1) Login\n"
          "2) About\n"
          "_) Exit\n"
@@ -92,27 +92,27 @@ void display_about() {
          "WELCOME TO HOTEL ROOM BOOKING\n");
 }
 void display_rooms() {
-  printf("\n┌─TYPE─ID──NROOMS──PRICEPERNIGHT──MAXGUESTS───AMENITIES──┬─TYPE─NUM────────────────────PRI"
-         "CE─┐\n");
+  printf("\n.-TYPE-ID--NROOMS--PRICEPERNIGHT--MAXGUESTS---AMENITIES--┬-TYPE-NUM--------------------PRI"
+         "CE-.\n");
 
   for (int i = 0; i < MAX_ITEM_COUNT / 2; i++) {
-    printf("│ %-10s %d %5d ₱ %5d %5d │", STORAGE_ROOM_TYPES[i], i,
+    printf("| %-10s %d %5d ₱ %5d %5d |", STORAGE_ROOM_TYPES[i], i,
            STORAGE_ROOM_PRICESPERNIGHT[i], STORAGE_ROOM_NUMROOMS[i],
            STORAGE_ROOM_MAXGUESTS[i]);
-    printf(" %-10s %d %5d ₱ %5d %5d │\n", STORAGE_ROOM_TYPES[i + 10], i + 10,
+    printf(" %-10s %d %5d ₱ %5d %5d |\n", STORAGE_ROOM_TYPES[i + 10], i + 10,
            STORAGE_ROOM_PRICESPERNIGHT[i + 10], STORAGE_ROOM_NUMROOMS[i + 10],
            STORAGE_ROOM_MAXGUESTS[i + !0]);
   }
 
-  // printf("├───────────[ DOKBOK's ]┴[ BOKGER "
-  //        "]──────────────┘\n");
+  // printf("├-----------[ DOKBOK's ]┴[ BOKGER "
+  //        "]--------------.\n");
 }
 void display_roomselection() {
   printf("Hello, %s!", currentUserName);
   display_rooms();
-  printf("       ┌───────────────────┐\n"
-         "       │   SELECT A ROOM   │\n"
-         "       └───────────────────┘\n"
+  printf("       .-------------------.\n"
+         "       |   SELECT A ROOM   |\n"
+         "       .-------------------.\n"
          "1) -\n"
          "2) -\n"
          "_) Exit\n"
