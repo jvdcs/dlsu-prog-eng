@@ -15,6 +15,8 @@
 #define STATE_ROOMSELECTION_SUMMARY 6
 #define STATE_ROOMSELECTION_ALLROOMS 7
 #define STATE_ROOMSELECTION_RESERVE 8
+#define STATE_DISCOUNT_CHECK 9
+#define STATE_RESET_USER_DATA 10
 
 // === RUNTIME VARIABLES ===
 int currentState = 0;
@@ -27,21 +29,25 @@ char currentUserRoomType[MAX_NAME_LENGTH + 1];
 int currentUserNumNights = 0;
 int currentUserNumRooms = 0;
 
+// |||||||||||| NEW STUFF
+int currentUserBooking[MAX_ITEM_COUNT];
+int currentUserBookingCount;
+// |||||||||||| NEW STUFF
+
 // === UNCHANGING VARIABLES ===
 char REGISTERED_USERNAMES[MAX_USERS][MAX_NAME_LENGTH] = {
-    "GUEST",
-    "ADMIN",
+    "GUEST", "ADMIN",
     // "CHECKIN",
     "k", // < TEMPRARY for convenience
 };
 char REGISTERED_PASSWORDS[MAX_USERS][MAX_NAME_LENGTH] = {
-    "GUEST",
-    "ADMIN",
+    "GUEST", "ADMIN",
     // "PILLOW",
     "k", // < TEMPRARY for convenience
 };
 
-//NOTE: Room values may not be realistic. For academic purposes only (and comic relief)
+// NOTE: Room values may not be realistic. For academic purposes only (and comic
+// relief)
 char STORAGE_ROOM_TYPES[MAX_ITEM_COUNT][MAX_NAME_LENGTH + 1] = {
     "Single", "Double", "Double", "Suite",  "Family", "Deluxe", "Double", //
     "Double", "Family", "Family", "Double", "Double", "Deluxe", "Suite",  //
@@ -92,7 +98,7 @@ void display_entryOpts() {
          "\n"
          "1) Login\n"
          "2) About\n"
-         "_) Exit\n"
+         "3) Exit\n"
          "\n"
          "Option: ");
 }
@@ -108,6 +114,28 @@ void display_about() {
   printf("\n"
          "WELCOME TO HOTEL ROOM BOOKING\n");
 }
+
+// |||||||||||||||||||||||||||||| NEW STUFF
+// you can rename this to something better, i was lazy
+void display_currentUserBooking() {
+  printf("\n"
+         "--TYPE-----ID---ROOMS---$/NIGHT---MAXGST---AMENITIES-------------"
+         "\n");
+  for (int i = 0; i < currentUserBookingCount; i++) {
+    int i2 = currentUserBooking[i];
+    printf("| %-8s %-4d %-7d %-9d %-8d %-20s |\n",
+           STORAGE_ROOM_TYPES[i2],          //
+           i2,                              //
+           STORAGE_ROOM_NUMROOMS[i2],       //
+           STORAGE_ROOM_PRICESPERNIGHT[i2], //
+           STORAGE_ROOM_MAXGUESTS[i2],      //
+           STORAGE_ROOM_AMENITIES[i2]       //
+    );
+  }
+  printf("----------------------------------------------------------------\n");
+}
+// ||||||||||||||||||||||||||||||| NEW STUFF
+
 void display_roomSelection_allRooms() {
   printf("\n"
          "--TYPE-----ID---ROOMS---$/NIGHT---MAXGST---AMENITIES-------------"
@@ -122,7 +150,7 @@ void display_roomSelection_allRooms() {
            STORAGE_ROOM_MAXGUESTS[i],      //
            STORAGE_ROOM_AMENITIES[i]       //
     );
-    int j = i + MAX_ITEM_COUNT / 2;
+    int j = i + 10;
     printf(" %-8s %-4d %-7d %-9d %-8d %-20s |\n",
            STORAGE_ROOM_TYPES[j],          //
            j,                              //
@@ -143,7 +171,7 @@ void display_roomSelectionOpts() {
          "\n"
          "1) Reserve a room\n"
          "2) View all rooms\n"
-         "3) Proceed to booking summary\n"
+         "3) Booking summary\n"
          "_) Log out\n"
          "\n"
          "Option: ");
@@ -181,12 +209,38 @@ void display_roomSelection_numRoomsOpts() {
          "Option: ");
 }
 void display_roomSelection_summary() {
-  printf("( Summary of selection )\n"
+  printf("( Summary of Current Booking )\n"
          "\n"
          "- Room type: %s\n"
          "  Nights of stay: %d\n"
-         "  Reserved rooms: %d\n",
+         "  Desired roomcount per unit: %d\n",
          currentUserRoomType, currentUserNumNights, currentUserNumRooms);
+}
+void display_roomSelection_confirmation() {
+  display_roomSelection_summary();
+
+  // ||||||||||||||||||||||| NEW STUFF |||||||||||||||||||
+  display_currentUserBooking();
+  // ||||||||||||||||||||||| NEW STUFF |||||||||||||||||||
+
+  printf("\n"
+         "Options:\n"
+         "1) Confirm Booking\n"
+         "2) Reset Booking details\n"
+         "_) Back\n"
+         "\n"
+         "Option: ");
+}
+void display_discount_check() {
+  printf("\n"
+         "( Discounting verification )\n"
+         "\n"
+         "- What ID to present?\n"
+         "Options: \n"
+         "1) Senior/PWD (20 %%)\n"
+         "2) Loyalty Discount (15 %%)\n"
+         "\n"
+         "Option: ");
 }
 void clear_screen() {
   for (int i = 0; i < 100; i++) {
@@ -222,6 +276,8 @@ int take_double() {
   clear_buffer();
   return 0;
 }
+
+// === PASSWORD CHECKING ===
 int streq(char s1[], char s2[]) { return strcmp(s1, s2) == 0; }
 int check_valid_login(char name[], char password[]) {
   int is = 0;
@@ -232,7 +288,7 @@ int check_valid_login(char name[], char password[]) {
       break;
     }
   }
-  return is;
+  return is; // RETURNING ZERO
 }
 
 int get_desiredType_quantity(char type[], int numRooms) {
@@ -245,6 +301,25 @@ int get_desiredType_quantity(char type[], int numRooms) {
   }
   return hits;
 }
+
+// ||||||||||||||||||||| NEW STUFF
+void fill_currentUserBooking(char type[], int numRooms) {
+  currentUserBookingCount = 0;
+  for (int i = 0; i < MAX_ITEM_COUNT; i++) {
+    if (streq(type, STORAGE_ROOM_TYPES[i]) &&
+        numRooms <= STORAGE_ROOM_NUMROOMS[i]) {
+      currentUserBooking[currentUserBookingCount] = i;
+      currentUserBookingCount++;
+    }
+  }
+}
+void clear_currentUserBooking() {
+  currentUserBookingCount = 0;
+  for (int i = 0; i < MAX_ITEM_COUNT; i++) {
+      currentUserBooking[i] = 0;
+  }
+}
+// ||||||||||||||||||||| NEW STUFF
 
 // === INTERACTIVE FUNCTIONS ===
 int INT_entry() {
@@ -265,23 +340,24 @@ int INT_entry() {
   }
   return 0;
 }
+
 int INT_login() {
   printf("Username: ");
-  if (scanf("%20s", currentUserName) != 1) {
+  if (scanf("%20s", currentUserName) != 1) { // get username
     clear_buffer();
     currentState = STATE_ERROR;
     return 1;
   }
   clear_buffer();
   printf("Password: ");
-  if (scanf("%20s", currentUserPassword) != 1) {
+  if (scanf("%20s", currentUserPassword) != 1) { // get password
     clear_buffer();
     currentState = STATE_ERROR;
     return 1;
   }
   clear_buffer();
 
-  if (!check_valid_login(currentUserName, currentUserPassword)) {
+  if (!check_valid_login(currentUserName, currentUserPassword)) { // if
     printf("\nInvalid Login, attempts left: %d\n",
            MAX_FAILED_LOGINS - currentFailedLogins);
     currentState = STATE_ENTRY;
@@ -331,7 +407,8 @@ int INT_roomSelection_reserve() {
   if (take_int() != 0)
     return 1;
 
-  char desiredType[MAX_NAME_LENGTH];
+  char desiredType[MAX_NAME_LENGTH]; // if I press 1-5, it will copy the desired
+                                     // type to set options
   switch (currentUserInt) {
   case 1:
     strcpy(desiredType, "Single");
@@ -366,6 +443,13 @@ int INT_roomSelection_reserve() {
   if (take_int() != 0)
     return 1;
   currentUserNumRooms = currentUserInt;
+
+  // |||||||||||||||||| NEW STUFF |||||||||||||||||||||||
+  // fills up the user's array with the ids of the rooms that match their
+  // criteria
+  fill_currentUserBooking(desiredType, currentUserInt);
+  // |||||||||||||||||| NEW STUFF |||||||||||||||||||||||
+
   int count = get_desiredType_quantity(desiredType, currentUserInt);
   int maxcount = get_desiredType_quantity(desiredType, 0);
   clear_screen();
@@ -380,10 +464,13 @@ int INT_roomSelection_reserve() {
            "  check our list of available rooms at\n"
            "  'Room Reservation >> 2) View all rooms'\n");
   } else {
-    printf(
-        "\n"
-        "- Noted! We have %d of '%s' rooms, and %d of them have at least %d rooms\n",
-        maxcount, desiredType, count, currentUserInt);
+    printf("\n"
+           "- Noted! Out of %d, we have %d rooms of type '%s', which have at least "
+           "%d rooms\n"
+           "\n"
+           "- Please proceed to the Booking summary for payment and "
+           "confirmation.\n",
+           maxcount, count, desiredType, currentUserInt);
   }
   prompt_wait();
   currentState = STATE_ROOMSELECTION;
@@ -396,9 +483,42 @@ int INT_roomSelection_allRooms() {
   currentState = STATE_ROOMSELECTION;
   return 0;
 }
-int INT_roomSelection_summary() {
+int INT_roomSelection_summary() { // for choices. don't override the current
+                                  // state to ensure that they run
   clear_screen();
+  display_roomSelection_confirmation();
+  if (take_int() != 0)
+    return 1;
+  switch (currentUserInt) {
+  case 1:
+    currentState = STATE_DISCOUNT_CHECK;
+    break;
+  case 2:
+    currentState = STATE_RESET_USER_DATA;
+    break;
+  default:
+    currentState = STATE_ROOMSELECTION;
+    break;
+  }
+  return 0;
+}
+int INT_discount_check() {
+  display_discount_check();
 
+  prompt_wait();
+  currentState = STATE_ROOMSELECTION;
+  return 0;
+}
+int INT_reset_user_data() {
+  currentUserNumNights = 0;
+  currentUserNumRooms = 0;
+  strcpy(currentUserRoomType, "");
+
+  // ||||||||||||||||||||||||||| NEW STUFF
+
+  clear_currentUserBooking();
+  // ||||||||||||||||||||||||||| NEW STUFF
+  printf("\nCleared your booking\n");
   prompt_wait();
   currentState = STATE_ROOMSELECTION;
   return 0;
@@ -436,6 +556,12 @@ void state_loop() {
   } break;
   case STATE_ERROR: {
     INT_error();
+  } break;
+  case STATE_DISCOUNT_CHECK: {
+    INT_discount_check();
+  } break;
+  case STATE_RESET_USER_DATA: {
+    INT_reset_user_data();
   } break;
   }
 }
