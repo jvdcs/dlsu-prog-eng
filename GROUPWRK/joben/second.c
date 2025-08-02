@@ -332,7 +332,7 @@ void reset_user_data() {
 int INT_entry() {
 
   // ||||||||||||||||||||||| NEW STUFF
-  // so new user login is fresh and has previous leftovers
+  // so new user login is fresh and has NO previous leftovers
   reset_user_data();
   // ||||||||||||||||||||||| NEW STUFF
 
