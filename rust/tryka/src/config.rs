@@ -12,7 +12,7 @@ pub struct Config {
 #[derive(Deserialize)]
 pub struct Interactive {
     pub display: String,
-    pub options: Vec<String>,
+    pub options: String,
 }
 
 pub static CONFIG: Lazy<Config> = Lazy::new(|| {
